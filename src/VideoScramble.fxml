@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.image.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.shape.*?>
+
+<?import javafx.scene.text.Text?>
+<BorderPane prefHeight="600.0" prefWidth="800.0" xmlns="http://javafx.com/javafx/17.0.2-ea" xmlns:fx="http://javafx.com/fxml/1" fx:controller="VideoScrambleController">
+            <bottom>
+                <VBox alignment="center" spacing="10">
+                    <HBox spacing="25" alignment="center">
+                        <padding>
+                            <Insets bottom="10" left="25" right="25" top="10" />
+                        </padding>
+                        <HBox alignment="center" spacing="10">
+                            <Label text="Clé aléatoire" />
+                            <CheckBox fx:id="randomKey" />
+                        </HBox>
+                        <Button fx:id="button" alignment="center" onAction="#startCamera" text="Démarrer Caméra" />
+                        <HBox alignment="center" spacing="10">
+                            <Text fx:id="rValue" />
+                            <Text fx:id="sValue" />
+                        </HBox>
+                    </HBox>
+
+                    <VBox alignment="CENTER" maxWidth="600">
+                        <HBox spacing="10" alignment="CENTER">
+                            <Label text="Clé R (Offset): "/>
+                            <Slider fx:id="sliderR" min="0" max="255" value="177" showTickLabels="true" showTickMarks="true" HBox.hgrow="ALWAYS"/>
+                            <Text text="r" />
+                        </HBox>
+
+                        <HBox spacing="10" alignment="CENTER">
+                            <Label text="Clé S (Step): "/>
+                            <Slider fx:id="sliderS" min="0" max="127" value="67" showTickLabels="true" showTickMarks="true" HBox.hgrow="ALWAYS"/>
+                        </HBox>
+                    </VBox>
+                </VBox>
+            </bottom>
+            <center>
+                <VBox alignment="center">
+                <HBox alignment="center">
+                    <VBox alignment="center">
+                        <padding><Insets top="25" right="25" bottom="10" left="25"/></padding>
+                        <ImageView fx:id="originalFrame"/>
+                        <Text>Original</Text>
+                    </VBox>
+                    <VBox alignment="center">
+                        <padding><Insets top="25" right="25" bottom="10" left="25"/></padding>
+                        <ImageView fx:id="scrambledFrame"/>
+                        <Text>Scrambled</Text>
+                    </VBox>
+                </HBox>
+                    <VBox alignment="center">
+                        <padding><Insets top="25" right="25" bottom="10" left="25"/></padding>
+                        <ImageView fx:id="unscrambledFrame"/>
+                        <Text>Unscrambled</Text>
+                    </VBox>
+                </VBox>
+            </center>
+   <left>
+      <Box depth="100" height="100" width="100" BorderPane.alignment="CENTER" />
+   </left>
+
+</BorderPane>
