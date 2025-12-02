@@ -45,7 +45,7 @@ public class Unscrambler {
                         }
                         prevSrcIndex = srcIndex;
                     }
-                    tempRow += blockSize;highestOneBit
+                    tempRow += blockSize;
                 }
 
                 if (currentScore < bestScore) {

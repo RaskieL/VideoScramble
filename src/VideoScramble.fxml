@@ -5,63 +5,135 @@
 <?import javafx.scene.image.*?>
 <?import javafx.scene.layout.*?>
 <?import javafx.scene.shape.*?>
+<?import javafx.scene.text.*?>
 
-<?import javafx.scene.text.Text?>
 <BorderPane prefHeight="600.0" prefWidth="800.0" xmlns="http://javafx.com/javafx/17.0.2-ea" xmlns:fx="http://javafx.com/fxml/1" fx:controller="VideoScrambleController">
-            <bottom>
-                <VBox alignment="center" spacing="10">
-                    <HBox spacing="25" alignment="center">
-                        <padding>
-                            <Insets bottom="10" left="25" right="25" top="10" />
-                        </padding>
-                        <HBox alignment="center" spacing="10">
-                            <Label text="Clé aléatoire" />
-                            <CheckBox fx:id="randomKey" />
-                        </HBox>
-                        <Button fx:id="button" alignment="center" onAction="#startCamera" text="Démarrer Caméra" />
-                        <HBox alignment="center" spacing="10">
-                            <Text fx:id="rValue" />
-                            <Text fx:id="sValue" />
-                        </HBox>
-                    </HBox>
+    <center>
+        <TabPane tabClosingPolicy="UNAVAILABLE" BorderPane.alignment="CENTER">
+            <tabs>
 
-                    <VBox alignment="CENTER" maxWidth="600">
-                        <HBox spacing="10" alignment="CENTER">
-                            <Label text="Clé R (Offset): "/>
-                            <Slider fx:id="sliderR" min="0" max="255" value="177" showTickLabels="true" showTickMarks="true" HBox.hgrow="ALWAYS"/>
-                            <Text text="r" />
-                        </HBox>
+                <Tab text="Webcam Live">
+                    <content>
+                        <BorderPane>
+                            <bottom>
+                                <VBox alignment="center" spacing="10">
+                                    <HBox alignment="center" spacing="25">
+                                        <padding>
+                                            <Insets bottom="10" left="25" right="25" top="10" />
+                                        </padding>
+                                        <HBox alignment="center" spacing="10">
+                                            <Label text="Clé aléatoire" />
+                                            <CheckBox fx:id="randomKey" />
+                                        </HBox>
+                                        <Button fx:id="button" alignment="center" onAction="#startCamera" text="Démarrer Caméra" />
+                                        <HBox alignment="center" spacing="10">
+                                            <Text fx:id="rValue" />
+                                            <Text fx:id="sValue" />
+                                        </HBox>
+                                    </HBox>
 
-                        <HBox spacing="10" alignment="CENTER">
-                            <Label text="Clé S (Step): "/>
-                            <Slider fx:id="sliderS" min="0" max="127" value="67" showTickLabels="true" showTickMarks="true" HBox.hgrow="ALWAYS"/>
-                        </HBox>
-                    </VBox>
-                </VBox>
-            </bottom>
-            <center>
-                <VBox alignment="center">
-                <HBox alignment="center">
-                    <VBox alignment="center">
-                        <padding><Insets top="25" right="25" bottom="10" left="25"/></padding>
-                        <ImageView fx:id="originalFrame"/>
-                        <Text>Original</Text>
-                    </VBox>
-                    <VBox alignment="center">
-                        <padding><Insets top="25" right="25" bottom="10" left="25"/></padding>
-                        <ImageView fx:id="scrambledFrame"/>
-                        <Text>Scrambled</Text>
-                    </VBox>
-                </HBox>
-                    <VBox alignment="center">
-                        <padding><Insets top="25" right="25" bottom="10" left="25"/></padding>
-                        <ImageView fx:id="unscrambledFrame"/>
-                        <Text>Unscrambled</Text>
-                    </VBox>
-                </VBox>
-            </center>
-   <left>
-      <Box depth="100" height="100" width="100" BorderPane.alignment="CENTER" />
-   </left>
+                                    <VBox alignment="CENTER" maxWidth="600">
+                                        <HBox alignment="CENTER" spacing="10">
+                                            <Label text="Clé R (Offset): " />
+                                            <Slider fx:id="sliderR" showTickLabels="true" showTickMarks="true" max="255" min="0" value="177" HBox.hgrow="ALWAYS" />
+                                            <Text text="r" />
+                                        </HBox>
 
+                                        <HBox alignment="CENTER" spacing="10">
+                                            <Label text="Clé S (Step): " />
+                                            <Slider fx:id="sliderS" showTickLabels="true" showTickMarks="true" max="127" min="0" value="67" HBox.hgrow="ALWAYS" />
+                                        </HBox>
+                                    </VBox>
+                                </VBox>
+                            </bottom>
+
+                            <center>
+                                <VBox alignment="center">
+                                    <HBox alignment="center">
+                                        <VBox alignment="center">
+                                            <padding><Insets bottom="10" left="25" right="25" top="25" /></padding>
+                                            <ImageView fx:id="originalFrame" fitWidth="350" preserveRatio="true" />
+                                            <Text>Original</Text>
+                                        </VBox>
+                                        <VBox alignment="center">
+                                            <padding><Insets bottom="10" left="25" right="25" top="25" /></padding>
+                                            <ImageView fx:id="scrambledFrame" fitWidth="350" preserveRatio="true" />
+                                            <Text>Scrambled</Text>
+                                        </VBox>
+                                    </HBox>
+                                    <VBox alignment="center">
+                                        <padding><Insets bottom="10" left="25" right="25" top="25" /></padding>
+                                        <ImageView fx:id="unscrambledFrame" fitWidth="350" preserveRatio="true" />
+                                        <Text>Unscrambled</Text>
+                                    </VBox>
+                                </VBox>
+                            </center>
+
+                            <left>
+                                <Box depth="100" height="100" width="100" BorderPane.alignment="CENTER" />
+                            </left>
+                        </BorderPane>
+                    </content>
+                </Tab>
+
+                <Tab text="Chiffrer un Fichier">
+                    <content>
+                        <VBox alignment="CENTER" spacing="20">
+                            <padding><Insets top="20" right="20" bottom="20" left="20"/></padding>
+                            <Label style="-fx-font-size: 18px; -fx-font-weight: bold;" text="Chiffrement de Vidéo (.mp4, .avi)" />
+
+                            <HBox alignment="CENTER" spacing="10">
+                                <Button text="1. Sélectionner vidéo source" onAction="#selectVideoToScramble"/>
+                                <Label fx:id="lblScrambleSource" text="Aucun fichier sélectionné" style="-fx-text-fill: grey;"/>
+                            </HBox>
+
+                            <Separator/>
+
+                            <VBox alignment="CENTER" spacing="5">
+                                <Label text="Paramètres actuels (utilisera les sliders en bas) :" />
+                                <HBox alignment="CENTER" spacing="10">
+                                    <Label fx:id="lblCurrentR" text="R: --" style="-fx-font-weight: bold;"/>
+                                    <Label fx:id="lblCurrentS" text="S: --" style="-fx-font-weight: bold;"/>
+                                </HBox>
+                            </VBox>
+
+                            <Button fx:id="btnStartScramble" text="2. Lancer le chiffrement" onAction="#startScrambleProcess" disable="true" style="-fx-background-color: #4CAF50; -fx-text-fill: white;"/>
+
+                            <VBox spacing="5" alignment="CENTER_LEFT" maxWidth="600">
+                                <Label text="Progression :" />
+                                <ProgressBar fx:id="progressScramble" progress="0.0" maxWidth="Infinity" />
+                                <Label fx:id="lblStatusScramble" text="En attente..." />
+                            </VBox>
+                        </VBox>
+                    </content>
+                </Tab>
+
+                <Tab text="Déchiffrer un Fichier">
+                    <content>
+                        <VBox alignment="CENTER" spacing="20">
+                            <padding><Insets top="20" right="20" bottom="20" left="20"/></padding>
+                            <Label style="-fx-font-size: 18px; -fx-font-weight: bold;" text="Déchiffrement de Vidéo" />
+
+                            <HBox alignment="CENTER" spacing="10">
+                                <Button text="1. Sélectionner vidéo chiffrée" onAction="#selectVideoToUnscramble"/>
+                                <Label fx:id="lblUnscrambleSource" text="Aucun fichier sélectionné" style="-fx-text-fill: grey;"/>
+                            </HBox>
+
+                            <Separator/>
+
+                            <CheckBox fx:id="chkAutoCrack" text="Trouver les clés automatiquement (Auto-Crack)" selected="true"/>
+
+                            <Button fx:id="btnStartUnscramble" text="2. Lancer le déchiffrement" onAction="#startUnscrambleProcess" disable="true" style="-fx-background-color: #2196F3; -fx-text-fill: white;"/>
+
+                            <VBox spacing="5" alignment="CENTER_LEFT" maxWidth="600">
+                                <Label text="Progression :" />
+                                <ProgressBar fx:id="progressUnscramble" progress="0.0" maxWidth="Infinity" />
+                                <Label fx:id="lblStatusUnscramble" text="En attente..." />
+                            </VBox>
+                        </VBox>
+                    </content>
+                </Tab>
+            </tabs>
+        </TabPane>
+    </center>
 </BorderPane>

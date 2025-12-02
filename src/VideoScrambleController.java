@@ -1,5 +1,6 @@
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferByte;
+import java.io.File;
 import java.util.Random;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -7,19 +8,20 @@ import java.util.concurrent.TimeUnit;
 import javafx.application.Platform;
 import javafx.beans.property.ObjectProperty;
 import javafx.embed.swing.SwingFXUtils;
-import javafx.scene.control.CheckBox;
-import javafx.scene.control.Slider;
+import javafx.scene.control.*;
 import javafx.scene.text.Text;
 import org.opencv.core.*;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.videoio.VideoCapture;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
-import javafx.scene.control.Button;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 
+import org.opencv.videoio.VideoWriter;
 import org.opencv.videoio.Videoio;
+import javafx.concurrent.Task;
+import javafx.stage.FileChooser;
 
 /**
  * The controller for our application, where the application logic is
@@ -58,10 +60,29 @@ public class VideoScrambleController
     @FXML
     private CheckBox randomKey;
 
+    @FXML private Label lblScrambleSource;
+    @FXML private Label lblCurrentR;
+    @FXML private Label lblCurrentS;
+    @FXML private Button btnStartScramble;
+    @FXML private ProgressBar progressScramble;
+    @FXML private Label lblStatusScramble;
+
+    @FXML private Label lblUnscrambleSource;
+    @FXML private CheckBox chkAutoCrack;
+    @FXML private Button btnStartUnscramble;
+    @FXML private ProgressBar progressUnscramble;
+    @FXML private Label lblStatusUnscramble;
+
+    // Fichiers sélectionnés
+    private File fileToScramble;
+    private File fileToUnscramble;
+
     private ScheduledExecutorService timer;
     private VideoCapture capture = new VideoCapture();
     private boolean cameraActive = false;
     private static int cameraId = 0;
+
+    VideoWriter videoWriter;
 
     @FXML
     public void initialize() {
@@ -100,6 +121,10 @@ public class VideoScrambleController
             if (this.capture.isOpened())
             {
                 this.cameraActive = true;
+                int fourcc = VideoWriter.fourcc('H','2','6','4');
+                double fps = capture.get(Videoio.CAP_PROP_FPS);
+                Size size =  new Size((int) capture.get(Videoio.CAP_PROP_FRAME_WIDTH), (int) capture.get(Videoio.CAP_PROP_FRAME_HEIGHT));
+                this.videoWriter = new VideoWriter("/home/maiken/Videos/test.avi", fourcc, fps, size, true);
 
                 // grab a frame every 33 ms (30 frames/sec)
                 Runnable frameGrabber = new Runnable() {
@@ -111,7 +136,6 @@ public class VideoScrambleController
                             if (frame.empty()) {
                                 return;
                             }
-                            // Original
                             Image imageToShow = mat2Image(frame.clone());
 
                             if(randomKey.isSelected()){
@@ -119,21 +143,28 @@ public class VideoScrambleController
                                 s = (byte)Math.abs(new Random().nextInt(4, 128) & 0xFF);
                             }
 
-                            rValue.setText(String.format("r: %d", (int) r));
-                            sValue.setText(String.format("s: %d", (int) s));
+                            Platform.runLater(() -> {
+                                rValue.setText(String.format("r: %d", (int) r & 0xFF));
+                                sValue.setText(String.format("s: %d", (int) s));
+                            });
 
-                            // Scrambling
-                            Mat scrambled = Scrambler.scramble(frame.clone(), r, s);
+                            Mat scrambled = Scrambler.scramble(frame, r, s);
                             Image scrambledImageToShow = mat2Image(scrambled);
 
-                            // Unscrambling
-                            Mat unscrambled = Unscrambler.unscramble(scrambled.clone());
+                            Mat unscrambled = Unscrambler.unscramble(scrambled);
                             Image unscrambledImageToShow = mat2Image(unscrambled);
 
                             updateImageView(originalFrame, imageToShow);
                             updateImageView(scrambledFrame, scrambledImageToShow);
                             updateImageView(unscrambledFrame, unscrambledImageToShow);
 
+                            if (videoWriter != null && videoWriter.isOpened()) {
+                                videoWriter.write(scrambled);
+                            }
+
+                            scrambled.release();
+                            unscrambled.release();
+                            frame.release();
                         } catch (Exception e) {
                             System.err.println("Erreur dans la boucle vidéo : " + e.getMessage());
                             e.printStackTrace();
@@ -320,4 +351,166 @@ public class VideoScrambleController
         });
     }
 
+    @FXML
+    public void selectVideoToScramble(ActionEvent event) {
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Choisir une vidéo à chiffrer");
+        fileChooser.getExtensionFilters().addAll(
+                new FileChooser.ExtensionFilter("Vidéos", "*.mp4", "*.avi", "*.mkv")
+        );
+        File selectedFile = fileChooser.showOpenDialog(button.getScene().getWindow());
+        if (selectedFile != null) {
+            this.fileToScramble = selectedFile;
+            lblScrambleSource.setText(selectedFile.getName());
+            btnStartScramble.setDisable(false);
+
+            // Mise à jour visuelle des clés qui seront utilisées
+            lblCurrentR.setText("R: " + (int)(r & 0xFF));
+            lblCurrentS.setText("S: " + (int)s);
+        }
+    }
+
+    @FXML
+    public void startScrambleProcess(ActionEvent event) {
+        if (fileToScramble == null) return;
+
+        // Création du nom de fichier de sortie (ex: video.mp4 -> video_scrambled.avi)
+        String inputPath = fileToScramble.getAbsolutePath();
+        String outputPath = inputPath.substring(0, inputPath.lastIndexOf('.')) + "_scrambled.avi";
+
+        // Capture des clés actuelles (pour éviter qu'elles changent si l'user touche aux sliders pendant le traitement)
+        final byte currentR = this.r;
+        final byte currentS = this.s;
+
+        // Lancement de la tâche
+        processVideoTask(inputPath, outputPath, progressScramble, lblStatusScramble, true, currentR, currentS, false);
+    }
+
+    // ==========================================
+    // LOGIQUE DÉCHIFFREMENT FICHIER
+    // ==========================================
+
+    @FXML
+    public void selectVideoToUnscramble(ActionEvent event) {
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Choisir une vidéo à déchiffrer");
+        fileChooser.getExtensionFilters().addAll(
+                new FileChooser.ExtensionFilter("Vidéos AVI", "*.avi"),
+                new FileChooser.ExtensionFilter("Toutes vidéos", "*.*")
+        );
+        File selectedFile = fileChooser.showOpenDialog(button.getScene().getWindow());
+        if (selectedFile != null) {
+            this.fileToUnscramble = selectedFile;
+            lblUnscrambleSource.setText(selectedFile.getName());
+            btnStartUnscramble.setDisable(false);
+        }
+    }
+
+    @FXML
+    public void startUnscrambleProcess(ActionEvent event) {
+        if (fileToUnscramble == null) return;
+
+        String inputPath = fileToUnscramble.getAbsolutePath();
+        String outputPath = inputPath.substring(0, inputPath.lastIndexOf('.')) + "_unscrambled.avi";
+
+        boolean autoCrack = chkAutoCrack.isSelected();
+        final byte manualR = this.r; // Si pas auto-crack, on prend les sliders
+        final byte manualS = this.s;
+
+        processVideoTask(inputPath, outputPath, progressUnscramble, lblStatusUnscramble, false, manualR, manualS, autoCrack);
+    }
+
+    // ==========================================
+    // MOTEUR GÉNÉRIQUE DE TRAITEMENT VIDÉO
+    // ==========================================
+
+    private void processVideoTask(String inputPath, String outputPath,
+                                  ProgressBar progressBar, Label statusLabel,
+                                  boolean isScrambling, byte keyR, byte keyS, boolean autoCrack) {
+
+        Task<Void> task = new Task<Void>() {
+            @Override
+            protected Void call() throws Exception {
+                VideoCapture fileCapture = new VideoCapture(inputPath);
+                VideoWriter fileWriter = null;
+
+                if (!fileCapture.isOpened()) {
+                    updateMessage("Erreur : Impossible d'ouvrir la vidéo source.");
+                    return null;
+                }
+
+                try {
+                    // Récupération des métadonnées
+                    double fps = fileCapture.get(Videoio.CAP_PROP_FPS);
+                    int width = (int) fileCapture.get(Videoio.CAP_PROP_FRAME_WIDTH);
+                    int height = (int) fileCapture.get(Videoio.CAP_PROP_FRAME_HEIGHT);
+                    int totalFrames = (int) fileCapture.get(Videoio.CAP_PROP_FRAME_COUNT);
+
+                    if (fps <= 0) fps = 30.0; // Fallback
+
+                    // Codec MJPG pour compatibilité maximale .avi
+                    int fourcc = VideoWriter.fourcc('M', 'J', 'P', 'G');
+                    fileWriter = new VideoWriter(outputPath, fourcc, fps, new Size(width, height), true);
+
+                    if (!fileWriter.isOpened()) {
+                        updateMessage("Erreur : Impossible de créer le fichier de sortie.");
+                        return null;
+                    }
+
+                    Mat frame = new Mat();
+                    int frameCounter = 0;
+                    byte finalR = keyR;
+                    byte finalS = keyS;
+                    boolean keysDetermined = !autoCrack; // Si pas autoCrack, les clés sont déjà connues
+
+                    updateMessage("Traitement en cours...");
+
+                    while (fileCapture.read(frame)) {
+                        if (frame.empty()) break;
+
+                        Mat processedFrame;
+
+                        if (isScrambling) {
+                            processedFrame = Scrambler.scramble(frame, finalR, finalS);
+                        } else {
+                            processedFrame = Unscrambler.unscramble(frame);
+                        }
+
+                        // Écriture
+                        fileWriter.write(processedFrame);
+
+                        // Nettoyage
+                        // processedFrame.release(); // Attention: si scramble retourne une nouvelle Mat, release.
+                        // frame.release() est inutile ici car réutilisé par read(), mais bon de savoir.
+
+                        frameCounter++;
+                        updateProgress(frameCounter, totalFrames);
+
+                        // Mise à jour texte tous les 10% pour ne pas spammer l'UI
+                        if (frameCounter % (totalFrames / 10 + 1) == 0) {
+                            updateMessage(String.format("Traitement : %d %%", (frameCounter * 100 / totalFrames)));
+                        }
+                    }
+
+                    updateMessage("Terminé ! Fichier : " + new File(outputPath).getName());
+                    updateProgress(1, 1);
+
+                } catch (Exception e) {
+                    updateMessage("Erreur : " + e.getMessage());
+                    e.printStackTrace();
+                } finally {
+                    fileCapture.release();
+                    if (fileWriter != null) fileWriter.release();
+                }
+                return null;
+            }
+        };
+
+        // Liaison des propriétés de la tâche à l'UI
+        progressBar.progressProperty().bind(task.progressProperty());
+        statusLabel.textProperty().bind(task.messageProperty());
+
+        // Lancer dans un thread séparé
+        new Thread(task).start();
+    }
 }
