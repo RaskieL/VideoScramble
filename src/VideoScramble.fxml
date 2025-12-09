@@ -46,7 +46,7 @@
 
                                         <HBox alignment="CENTER" spacing="10">
                                             <Label text="Précision: " />
-                                            <Slider fx:id="sliderP" showTickLabels="true" showTickMarks="true" max="10" min="0" value="1" HBox.hgrow="ALWAYS" />
+                                            <Slider fx:id="sliderP" showTickLabels="true" minorTickCount="0" majorTickUnit="1" snapToTicks="true" showTickMarks="true" max="10" min="0" value="1" HBox.hgrow="ALWAYS" />
                                         </HBox>
                                     </VBox>
                                 </VBox>
@@ -56,17 +56,17 @@
                                 <HBox alignment="center" spacing="10">
                                     <VBox alignment="center">
                                         <padding><Insets bottom="10" left="10" right="10" top="25" /></padding>
-                                        <ImageView fx:id="originalFrame" fitWidth="320" preserveRatio="true" />
+                                        <ImageView fx:id="originalFrame" fitWidth="640" preserveRatio="true" />
                                         <Text>Original</Text>
                                     </VBox>
                                     <VBox alignment="center">
                                         <padding><Insets bottom="10" left="10" right="10" top="25" /></padding>
-                                        <ImageView fx:id="scrambledFrame" fitWidth="320" preserveRatio="true" />
+                                        <ImageView fx:id="scrambledFrame" fitWidth="640" preserveRatio="true" />
                                         <Text>Scrambled</Text>
                                     </VBox>
                                     <VBox alignment="center">
                                         <padding><Insets bottom="10" left="10" right="10" top="25" /></padding>
-                                        <ImageView fx:id="unscrambledFrame" fitWidth="320" preserveRatio="true" />
+                                        <ImageView fx:id="unscrambledFrame" fitWidth="640" preserveRatio="true" />
                                         <Text>Unscrambled</Text>
                                         <Label fx:id="lblFPS" text="FPS: --" style="-fx-font-weight: bold; -fx-text-fill: #2196F3;"/>
                                     </VBox>
