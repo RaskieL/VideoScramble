@@ -121,8 +121,6 @@
 
                             <Separator/>
 
-                            <CheckBox fx:id="chkAutoCrack" text="Trouver les clés automatiquement (Auto-Crack)" selected="true"/>
-
                             <Button fx:id="btnStartUnscramble" text="2. Lancer le déchiffrement" onAction="#startUnscrambleProcess" disable="true" style="-fx-background-color: #2196F3; -fx-text-fill: white;"/>
 
                             <VBox spacing="5" alignment="CENTER_LEFT" maxWidth="600">

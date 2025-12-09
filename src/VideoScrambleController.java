@@ -66,9 +66,9 @@ public class VideoScrambleController
     @FXML private Button btnStartScramble;
     @FXML private ProgressBar progressScramble;
     @FXML private Label lblStatusScramble;
+    @FXML private CheckBox scrambleVideoWithRandomKey;
 
     @FXML private Label lblUnscrambleSource;
-    @FXML private CheckBox chkAutoCrack;
     @FXML private Button btnStartUnscramble;
     @FXML private ProgressBar progressUnscramble;
     @FXML private Label lblStatusUnscramble;
@@ -90,6 +90,7 @@ public class VideoScrambleController
         sliderS.setValue(s);
 
         randomKey.setSelected(false);
+        scrambleVideoWithRandomKey.setSelected(false);
 
         sliderR.disableProperty().bind(randomKey.selectedProperty());
         sliderS.disableProperty().bind(randomKey.selectedProperty());
@@ -383,7 +384,7 @@ public class VideoScrambleController
         final byte currentS = this.s;
 
         // Lancement de la tâche
-        processVideoTask(inputPath, outputPath, progressScramble, lblStatusScramble, true, currentR, currentS, false);
+        processVideoTask(inputPath, outputPath, progressScramble, lblStatusScramble, true, currentR, currentS);
     }
 
     // ==========================================
@@ -413,11 +414,10 @@ public class VideoScrambleController
         String inputPath = fileToUnscramble.getAbsolutePath();
         String outputPath = inputPath.substring(0, inputPath.lastIndexOf('.')) + "_unscrambled.avi";
 
-        boolean autoCrack = chkAutoCrack.isSelected();
         final byte manualR = this.r; // Si pas auto-crack, on prend les sliders
         final byte manualS = this.s;
 
-        processVideoTask(inputPath, outputPath, progressUnscramble, lblStatusUnscramble, false, manualR, manualS, autoCrack);
+        processVideoTask(inputPath, outputPath, progressUnscramble, lblStatusUnscramble, false, manualR, manualS);
     }
 
     // ==========================================
@@ -426,7 +426,7 @@ public class VideoScrambleController
 
     private void processVideoTask(String inputPath, String outputPath,
                                   ProgressBar progressBar, Label statusLabel,
-                                  boolean isScrambling, byte keyR, byte keyS, boolean autoCrack) {
+                                  boolean isScrambling, byte keyR, byte keyS) {
 
         Task<Void> task = new Task<Void>() {
             @Override
@@ -461,7 +461,6 @@ public class VideoScrambleController
                     int frameCounter = 0;
                     byte finalR = keyR;
                     byte finalS = keyS;
-                    boolean keysDetermined = !autoCrack; // Si pas autoCrack, les clés sont déjà connues
 
                     updateMessage("Traitement en cours...");
 
@@ -471,6 +470,10 @@ public class VideoScrambleController
                         Mat processedFrame;
 
                         if (isScrambling) {
+                            if(scrambleVideoWithRandomKey.isSelected()){
+                                r = (byte)Math.abs(new Random().nextInt(4, 255) & 0xFF);
+                                s = (byte)Math.abs(new Random().nextInt(4, 128) & 0xFF);
+                            }
                             processedFrame = Scrambler.scramble(frame, finalR, finalS);
                         } else {
                             processedFrame = Unscrambler.unscramble(frame);
