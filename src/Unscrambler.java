@@ -2,16 +2,22 @@ import org.opencv.core.*;
 import org.opencv.imgproc.Imgproc;
 
 public class Unscrambler {
-
-    public static Mat unscramble(Mat scrambledFrame) {
+    public static Mat unscramble(Mat scrambledFrame, int nbCols) {
         int rows = scrambledFrame.rows();
-        int centerCol = scrambledFrame.cols() / 2;
 
-        byte[] columnData = new byte[rows];
+        int[] selectedCols = new int[nbCols];
+        for (int i = 1; i < nbCols; i++) {
+            selectedCols[i] = i * (scrambledFrame.cols() / nbCols+1);
+        }
 
-        for (int i = 0; i < rows; i++) {
-            double[] pixel = scrambledFrame.get(i, centerCol);
-            columnData[i] = (byte) pixel[0];
+        byte[][] columnsData = new byte[nbCols][rows];
+
+        for (int j = 0; j < nbCols; j++) {
+            int col = selectedCols[j];
+            for (int i = 0; i < rows; i++) {
+                double[] pixel = scrambledFrame.get(i, col);
+                columnsData[j][i] = (byte) pixel[0];
+            }
         }
 
         double bestScore = Double.MAX_VALUE;
@@ -24,28 +30,31 @@ public class Unscrambler {
             for (int r = 0; r < 256; r++) {
 
                 double currentScore = 0;
-                int prevSrcIndex = -1;
 
+                // Calculer le score pour chaque colonne sélectionnée
+                for (int j = 0; j < nbCols; j++) {
+                    int prevSrcIndex = -1;
 
-                int tempRow = 0;
-                while (tempRow < rows) {
-                    int remaining = rows - tempRow;
-                    int blockSize = Integer.highestOneBit(remaining);
+                    int tempRow = 0;
+                    while (tempRow < rows) {
+                        int remaining = rows - tempRow;
+                        int blockSize = Integer.highestOneBit(remaining);
 
-                    for (int i = 0; i < blockSize; i++) {
+                        for (int i = 0; i < blockSize; i++) {
 
-                        long pos = (r + stepFactor * i) % blockSize;
-                        int srcIndex = tempRow + (int) pos;
+                            long pos = (r + stepFactor * i) % blockSize;
+                            int srcIndex = tempRow + (int) pos;
 
-                        if (prevSrcIndex != -1) {
-                            int val1 = columnData[srcIndex] & 0xFF;
-                            int val2 = columnData[prevSrcIndex] & 0xFF;
+                            if (prevSrcIndex != -1) {
+                                int val1 = columnsData[j][srcIndex] & 0xFF;
+                                int val2 = columnsData[j][prevSrcIndex] & 0xFF;
 
-                            currentScore += Math.abs(val1 - val2);
+                                currentScore += Math.abs(val1 - val2);
+                            }
+                            prevSrcIndex = srcIndex;
                         }
-                        prevSrcIndex = srcIndex;
+                        tempRow += blockSize;
                     }
-                    tempRow += blockSize;
                 }
 
                 if (currentScore < bestScore) {
