@@ -28,6 +28,7 @@ bin/
 
 ### JetBrains ###
 .idea/
+VideoScramble.iml
 
 ### Mac OS ###
 .DS_Store
