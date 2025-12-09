@@ -114,6 +114,7 @@ public class VideoScrambleController
         sliderP.valueProperty().addListener((observable, oldValue, newValue) -> {
             p = newValue.intValue();
         });
+
     }
 
     /**
@@ -158,6 +159,11 @@ public class VideoScrambleController
             this.timer = Executors.newSingleThreadScheduledExecutor();
             this.timer.scheduleAtFixedRate(frameGrabber, 0, 33, TimeUnit.MILLISECONDS);
             this.button.setText("Stop Camera");
+
+            int fourcc = VideoWriter.fourcc('H','2','6','4');
+            double fps = capture.get(Videoio.CAP_PROP_FPS);
+            Size size =  new Size((int) capture.get(Videoio.CAP_PROP_FRAME_WIDTH), (int) capture.get(Videoio.CAP_PROP_FRAME_HEIGHT));
+            this.videoWriter = new VideoWriter("/home/maiken/Videos/test.avi", fourcc, fps, size, true);
         }
         else
         {
