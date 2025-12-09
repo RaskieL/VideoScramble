@@ -53,26 +53,24 @@
                             </bottom>
 
                             <center>
-                                <VBox alignment="center">
-                                    <HBox alignment="center">
-                                        <VBox alignment="center">
-                                            <padding><Insets bottom="10" left="25" right="25" top="25" /></padding>
-                                            <ImageView fx:id="originalFrame" fitWidth="350" preserveRatio="true" />
-                                            <Text>Original</Text>
-                                        </VBox>
-                                        <VBox alignment="center">
-                                            <padding><Insets bottom="10" left="25" right="25" top="25" /></padding>
-                                            <ImageView fx:id="scrambledFrame" fitWidth="350" preserveRatio="true" />
-                                            <Text>Scrambled</Text>
-                                        </VBox>
-                                    </HBox>
+                                <HBox alignment="center" spacing="10">
                                     <VBox alignment="center">
-                                        <padding><Insets bottom="10" left="25" right="25" top="25" /></padding>
-                                        <ImageView fx:id="unscrambledFrame" fitWidth="350" preserveRatio="true" />
+                                        <padding><Insets bottom="10" left="10" right="10" top="25" /></padding>
+                                        <ImageView fx:id="originalFrame" fitWidth="320" preserveRatio="true" />
+                                        <Text>Original</Text>
+                                    </VBox>
+                                    <VBox alignment="center">
+                                        <padding><Insets bottom="10" left="10" right="10" top="25" /></padding>
+                                        <ImageView fx:id="scrambledFrame" fitWidth="320" preserveRatio="true" />
+                                        <Text>Scrambled</Text>
+                                    </VBox>
+                                    <VBox alignment="center">
+                                        <padding><Insets bottom="10" left="10" right="10" top="25" /></padding>
+                                        <ImageView fx:id="unscrambledFrame" fitWidth="320" preserveRatio="true" />
                                         <Text>Unscrambled</Text>
                                         <Label fx:id="lblFPS" text="FPS: --" style="-fx-font-weight: bold; -fx-text-fill: #2196F3;"/>
                                     </VBox>
-                                </VBox>
+                                </HBox>
                             </center>
 
                             <left>
