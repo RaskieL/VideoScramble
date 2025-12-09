@@ -60,6 +60,7 @@ public class VideoScrambleController
     @FXML
     private CheckBox randomKey;
 
+    @FXML private Label lblFPS;
     @FXML private Label lblScrambleSource;
     @FXML private Label lblCurrentR;
     @FXML private Label lblCurrentS;
@@ -82,6 +83,11 @@ public class VideoScrambleController
     private boolean cameraActive = false;
     private static int cameraId = 0;
 
+    // Variables pour le calcul du FPS
+    private double currentFPS = 0;
+    private int fpsFrameCount = 0;
+    private long fpsStartTime = 0;
+
     VideoWriter videoWriter;
 
     @FXML
@@ -90,7 +96,7 @@ public class VideoScrambleController
         sliderS.setValue(s);
 
         randomKey.setSelected(false);
-        //scrambleVideoWithRandomKey.setSelected(false);
+        scrambleVideoWithRandomKey.setSelected(false);
 
         sliderR.disableProperty().bind(randomKey.selectedProperty());
         sliderS.disableProperty().bind(randomKey.selectedProperty());
@@ -120,7 +126,7 @@ public class VideoScrambleController
         if (!this.cameraActive)
         {
             // start the video capture
-            this.capture.open(cameraId, Videoio.CAP_V4L2);
+            this.capture.open(cameraId);
             // is the video stream available?
             if (this.capture.isOpened())
             {
@@ -128,7 +134,6 @@ public class VideoScrambleController
                 int fourcc = VideoWriter.fourcc('H','2','6','4');
                 double fps = capture.get(Videoio.CAP_PROP_FPS);
                 Size size =  new Size((int) capture.get(Videoio.CAP_PROP_FRAME_WIDTH), (int) capture.get(Videoio.CAP_PROP_FRAME_HEIGHT));
-                this.videoWriter = new VideoWriter("/home/maiken/Videos/test.avi", fourcc, fps, size, true);
 
                 // grab a frame every 33 ms (30 frames/sec)
                 Runnable frameGrabber = new Runnable() {
@@ -157,6 +162,29 @@ public class VideoScrambleController
 
                             Mat unscrambled = Unscrambler.unscramble(scrambled, p);
                             Image unscrambledImageToShow = mat2Image(unscrambled);
+
+                            // Calcul du FPS
+                            long currentTime = System.currentTimeMillis();
+                            if (fpsStartTime == 0) {
+                                fpsStartTime = currentTime;
+                            }
+                            fpsFrameCount++;
+
+                            // Mettre à jour le FPS toutes les 30 frames
+                            if (fpsFrameCount >= 30) {
+                                long elapsed = currentTime - fpsStartTime;
+                                if (elapsed > 0) {
+                                    currentFPS = (fpsFrameCount * 1000.0) / elapsed;
+                                }
+                                fpsFrameCount = 0;
+                                fpsStartTime = currentTime;
+
+                                // Afficher le FPS
+                                final double fps = currentFPS;
+                                Platform.runLater(() -> {
+                                    lblFPS.setText(String.format("FPS: %.1f", fps));
+                                });
+                            }
 
                             updateImageView(originalFrame, imageToShow);
                             updateImageView(scrambledFrame, scrambledImageToShow);
@@ -194,6 +222,12 @@ public class VideoScrambleController
             this.cameraActive = false;
             // update again the button content
             this.button.setText("Start Camera");
+
+            // Réinitialiser les variables FPS
+            fpsFrameCount = 0;
+            fpsStartTime = 0;
+            currentFPS = 0;
+            Platform.runLater(() -> lblFPS.setText("FPS: --"));
 
             // stop the timer
             this.stopAcquisition();
@@ -474,8 +508,9 @@ public class VideoScrambleController
 
                         if (isScrambling) {
                             if(scrambleVideoWithRandomKey.isSelected()){
-                                r = (byte)Math.abs(new Random().nextInt(4, 255) & 0xFF);
-                                s = (byte)Math.abs(new Random().nextInt(4, 128) & 0xFF);
+                                final Random random = new Random();
+                                r = (byte)Math.abs(random.nextInt(4, 255) & 0xFF);
+                                s = (byte)Math.abs(random.nextInt(4, 128) & 0xFF);
                             }
                             processedFrame = Scrambler.scramble(frame, finalR, finalS);
                         } else {

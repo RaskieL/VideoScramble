@@ -7,7 +7,7 @@
     </content>
     <orderEntry type="jdk" jdkName="25" jdkType="JavaSDK" />
     <orderEntry type="sourceFolder" forTests="false" />
-    <orderEntry type="library" name="javafx-sdk-17.0.17" level="application" />
-    <orderEntry type="library" name="opencv-4120" level="application" />
+    <orderEntry type="library" name="JavaFX" level="application" />
+    <orderEntry type="library" name="OpenCV-4.12.0" level="application" />
   </component>
 </module>

@@ -30,8 +30,6 @@ public class Unscrambler {
             for (int r = 0; r < 256; r++) {
 
                 double currentScore = 0;
-
-                // Calculer le score pour chaque colonne sélectionnée
                 for (int j = 0; j < nbCols; j++) {
                     int prevSrcIndex = -1;
 
