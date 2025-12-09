@@ -2,58 +2,56 @@ import org.opencv.core.*;
 import org.opencv.imgproc.Imgproc;
 
 public class Unscrambler {
+
     public static Mat unscramble(Mat scrambledFrame, int nbCols) {
         int rows = scrambledFrame.rows();
+        int[] selectedCols = selectColumnIndices(scrambledFrame.cols(), nbCols);
+        byte[][] columnsData = extractColumnsData(scrambledFrame, selectedCols, rows);
 
+        int[] bestKeys = findBestKeys(columnsData, rows, nbCols);
+
+        return unscrambleWithKeys(scrambledFrame, (byte) bestKeys[0], (byte) bestKeys[1]);
+    }
+
+    /**
+     * Sélectionne les indices de colonnes à échantillonner dans l'image.
+     */
+    private static int[] selectColumnIndices(int totalCols, int nbCols) {
         int[] selectedCols = new int[nbCols];
         for (int i = 1; i < nbCols; i++) {
-            selectedCols[i] = i * (scrambledFrame.cols() / nbCols+1);
+            selectedCols[i] = i * (totalCols / nbCols + 1);
         }
+        return selectedCols;
+    }
 
+    /**
+     * Extrait les données des colonnes sélectionnées.
+     */
+    private static byte[][] extractColumnsData(Mat frame, int[] selectedCols, int rows) {
+        int nbCols = selectedCols.length;
         byte[][] columnsData = new byte[nbCols][rows];
 
         for (int j = 0; j < nbCols; j++) {
             int col = selectedCols[j];
             for (int i = 0; i < rows; i++) {
-                double[] pixel = scrambledFrame.get(i, col);
+                double[] pixel = frame.get(i, col);
                 columnsData[j][i] = (byte) pixel[0];
             }
         }
+        return columnsData;
+    }
 
+    /**
+     * Trouve les meilleures clés R et S en testant toutes les combinaisons possibles.
+     */
+    private static int[] findBestKeys(byte[][] columnsData, int rows, int nbCols) {
         double bestScore = Double.MAX_VALUE;
         int bestR = 0;
         int bestS = 0;
 
         for (int s = 0; s < 128; s++) {
-            long stepFactor = 2L * s + 1L;
-
             for (int r = 0; r < 256; r++) {
-
-                double currentScore = 0;
-                for (int j = 0; j < nbCols; j++) {
-                    int prevSrcIndex = -1;
-
-                    int tempRow = 0;
-                    while (tempRow < rows) {
-                        int remaining = rows - tempRow;
-                        int blockSize = Integer.highestOneBit(remaining);
-
-                        for (int i = 0; i < blockSize; i++) {
-
-                            long pos = (r + stepFactor * i) % blockSize;
-                            int srcIndex = tempRow + (int) pos;
-
-                            if (prevSrcIndex != -1) {
-                                int val1 = columnsData[j][srcIndex] & 0xFF;
-                                int val2 = columnsData[j][prevSrcIndex] & 0xFF;
-
-                                currentScore += Math.abs(val1 - val2);
-                            }
-                            prevSrcIndex = srcIndex;
-                        }
-                        tempRow += blockSize;
-                    }
-                }
+                double currentScore = calculateScoreForKeys(r, s, columnsData, rows, nbCols);
 
                 if (currentScore < bestScore) {
                     bestScore = currentScore;
@@ -63,7 +61,50 @@ public class Unscrambler {
             }
         }
 
-        return unscrambleWithKeys(scrambledFrame, (byte) bestR, (byte) bestS);
+        return new int[]{bestR, bestS};
+    }
+
+    /**
+     * Calcule le score de rugosité pour une combinaison de clés R et S donnée.
+     */
+    private static double calculateScoreForKeys(int r, int s, byte[][] columnsData, int rows, int nbCols) {
+        long stepFactor = 2L * s + 1L;
+        double totalScore = 0;
+
+        for (int j = 0; j < nbCols; j++) {
+            totalScore += calculateColumnScore(r, stepFactor, columnsData[j], rows);
+        }
+
+        return totalScore;
+    }
+
+    /**
+     * Calcule le score pour une seule colonne.
+     */
+    private static double calculateColumnScore(int r, long stepFactor, byte[] columnData, int rows) {
+        double score = 0;
+        int prevSrcIndex = -1;
+        int tempRow = 0;
+
+        while (tempRow < rows) {
+            int remaining = rows - tempRow;
+            int blockSize = Integer.highestOneBit(remaining);
+
+            for (int i = 0; i < blockSize; i++) {
+                long pos = (r + stepFactor * i) % blockSize;
+                int srcIndex = tempRow + (int) pos;
+
+                if (prevSrcIndex != -1) {
+                    int val1 = columnData[srcIndex] & 0xFF;
+                    int val2 = columnData[prevSrcIndex] & 0xFF;
+                    score += Math.abs(val1 - val2);
+                }
+                prevSrcIndex = srcIndex;
+            }
+            tempRow += blockSize;
+        }
+
+        return score;
     }
 
     /**

@@ -22,19 +22,17 @@ public class VideoScramble extends Application {
             // store the root element so that the controllers can use it
             BorderPane rootElement = (BorderPane) loader.load();
 
-            Scene scene = new Scene(rootElement, 1000, 600);
+            Scene scene = new Scene(rootElement, 1400, 800);
 
             primaryStage.setTitle("Video scramble");
             primaryStage.setScene(scene);
+            primaryStage.setMaximized(true);
             primaryStage.show();
 
             // set the proper behavior on closing the application
             VideoScrambleController controller = loader.getController();
-            primaryStage.setOnCloseRequest((new EventHandler<WindowEvent>() {
-                public void handle(WindowEvent we) {
-                    controller.setClosed();
-                }
-            }));
+            controller.initializeImageSizes(scene);
+            primaryStage.setOnCloseRequest(we -> controller.setClosed());
         } catch (Exception e) {
             e.printStackTrace();
         }

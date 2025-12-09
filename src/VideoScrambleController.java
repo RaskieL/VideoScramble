@@ -15,6 +15,7 @@ import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.videoio.VideoCapture;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
+import javafx.scene.Scene;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 
@@ -74,6 +75,8 @@ public class VideoScrambleController
     @FXML private ProgressBar progressUnscramble;
     @FXML private Label lblStatusUnscramble;
 
+    final Random random = new Random();
+
     // Fichiers sélectionnés
     private File fileToScramble;
     private File fileToUnscramble;
@@ -114,6 +117,17 @@ public class VideoScrambleController
     }
 
     /**
+     * Initialise les tailles des ImageView en fonction de la taille de la fenêtre
+     */
+    public void initializeImageSizes(Scene scene) {
+        // Lier la largeur de chaque ImageView à environ 1/3 de la largeur de la scène
+        // En tenant compte des marges et espacements
+        originalFrame.fitWidthProperty().bind(scene.widthProperty().divide(3.3));
+        scrambledFrame.fitWidthProperty().bind(scene.widthProperty().divide(3.3));
+        unscrambledFrame.fitWidthProperty().bind(scene.widthProperty().divide(3.3));
+    }
+
+    /**
      * The action triggered by pushing the button on the GUI
      *
      * @param event
@@ -122,115 +136,155 @@ public class VideoScrambleController
     @FXML
     protected void startCamera(ActionEvent event)
     {
-
         if (!this.cameraActive)
         {
-            // start the video capture
-            this.capture.open(cameraId);
-            // is the video stream available?
-            if (this.capture.isOpened())
-            {
-                this.cameraActive = true;
-                int fourcc = VideoWriter.fourcc('H','2','6','4');
-                double fps = capture.get(Videoio.CAP_PROP_FPS);
-                Size size =  new Size((int) capture.get(Videoio.CAP_PROP_FRAME_WIDTH), (int) capture.get(Videoio.CAP_PROP_FRAME_HEIGHT));
-
-                // grab a frame every 33 ms (30 frames/sec)
-                Runnable frameGrabber = new Runnable() {
-                    @Override
-                    public void run()
-                    {
-                        try {
-                            Mat frame = grabFrame();
-                            if (frame.empty()) {
-                                return;
-                            }
-                            Image imageToShow = mat2Image(frame.clone());
-
-                            if(randomKey.isSelected()){
-                                r = (byte)Math.abs(new Random().nextInt(4, 255) & 0xFF);
-                                s = (byte)Math.abs(new Random().nextInt(4, 128) & 0xFF);
-                            }
-
-                            Platform.runLater(() -> {
-                                rValue.setText(String.format("r: %d", (int) r & 0xFF));
-                                sValue.setText(String.format("s: %d", (int) s));
-                            });
-
-                            Mat scrambled = Scrambler.scramble(frame, r, s);
-                            Image scrambledImageToShow = mat2Image(scrambled);
-
-                            Mat unscrambled = Unscrambler.unscramble(scrambled, p);
-                            Image unscrambledImageToShow = mat2Image(unscrambled);
-
-                            // Calcul du FPS
-                            long currentTime = System.currentTimeMillis();
-                            if (fpsStartTime == 0) {
-                                fpsStartTime = currentTime;
-                            }
-                            fpsFrameCount++;
-
-                            // Mettre à jour le FPS toutes les 30 frames
-                            if (fpsFrameCount >= 30) {
-                                long elapsed = currentTime - fpsStartTime;
-                                if (elapsed > 0) {
-                                    currentFPS = (fpsFrameCount * 1000.0) / elapsed;
-                                }
-                                fpsFrameCount = 0;
-                                fpsStartTime = currentTime;
-
-                                // Afficher le FPS
-                                final double fps = currentFPS;
-                                Platform.runLater(() -> {
-                                    lblFPS.setText(String.format("FPS: %.1f", fps));
-                                });
-                            }
-
-                            updateImageView(originalFrame, imageToShow);
-                            updateImageView(scrambledFrame, scrambledImageToShow);
-                            updateImageView(unscrambledFrame, unscrambledImageToShow);
-
-                            if (videoWriter != null && videoWriter.isOpened()) {
-                                videoWriter.write(scrambled);
-                            }
-
-                            scrambled.release();
-                            unscrambled.release();
-                            frame.release();
-                        } catch (Exception e) {
-                            System.err.println("Erreur dans la boucle vidéo : " + e.getMessage());
-                            e.printStackTrace();
-                        }
-                    }
-                };
-
-                this.timer = Executors.newSingleThreadScheduledExecutor();
-                this.timer.scheduleAtFixedRate(frameGrabber, 0, 33, TimeUnit.MILLISECONDS);
-
-                // update the button content
-                this.button.setText("Stop Camera");
-            }
-            else
-            {
-                // log the error
-                System.err.println("Impossible to open the camera connection...");
-            }
+            startCameraCapture();
         }
         else
         {
-            // the camera is not active at this point
-            this.cameraActive = false;
-            // update again the button content
-            this.button.setText("Start Camera");
+            stopCameraCapture();
+        }
+    }
 
-            // Réinitialiser les variables FPS
+    /**
+     * Démarre la capture vidéo depuis la caméra
+     */
+    private void startCameraCapture() {
+        this.capture.open(cameraId);
+        if (this.capture.isOpened())
+        {
+            this.cameraActive = true;
+            Runnable frameGrabber = this::processFrame;
+            this.timer = Executors.newSingleThreadScheduledExecutor();
+            this.timer.scheduleAtFixedRate(frameGrabber, 0, 33, TimeUnit.MILLISECONDS);
+            this.button.setText("Stop Camera");
+        }
+        else
+        {
+            System.err.println("Impossible to open the camera connection...");
+        }
+    }
+
+    /**
+     * Arrête la capture vidéo depuis la caméra
+     */
+    private void stopCameraCapture() {
+        this.cameraActive = false;
+        this.button.setText("Start Camera");
+        resetFPSCounters();
+        this.stopAcquisition();
+    }
+
+    /**
+     * Traite une frame de la caméra
+     */
+    private void processFrame() {
+        try {
+            Mat frame = grabFrame();
+            if (frame.empty()) {
+                return;
+            }
+
+            updateRandomKeysIfNeeded();
+            updateKeyLabels();
+
+            Image imageToShow = mat2Image(frame.clone());
+            Mat scrambled = Scrambler.scramble(frame, r, s);
+            Image scrambledImageToShow = mat2Image(scrambled);
+
+            Mat unscrambled = Unscrambler.unscramble(scrambled, p);
+            Image unscrambledImageToShow = mat2Image(unscrambled);
+
+            updateFPS();
+            updateAllImageViews(imageToShow, scrambledImageToShow, unscrambledImageToShow);
+            writeToVideoIfNeeded(scrambled);
+
+            releaseMatrices(frame, scrambled, unscrambled);
+        } catch (Exception e) {
+            System.err.println("Erreur dans la boucle vidéo : " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Met à jour les clés aléatoires si nécessaire
+     */
+    private void updateRandomKeysIfNeeded() {
+        if (randomKey.isSelected()) {
+            r = (byte) Math.abs(random.nextInt(4, 255) & 0xFF);
+            s = (byte) Math.abs(random.nextInt(4, 128) & 0xFF);
+        }
+    }
+
+    /**
+     * Met à jour les labels affichant les clés
+     */
+    private void updateKeyLabels() {
+        Platform.runLater(() -> {
+            rValue.setText(String.format("r: %d", r & 0xFF));
+            sValue.setText(String.format("s: %d", s & 0xFF));
+        });
+    }
+
+    /**
+     * Met à jour le calcul et l'affichage du FPS
+     */
+    private void updateFPS() {
+        long currentTime = System.currentTimeMillis();
+        if (fpsStartTime == 0) {
+            fpsStartTime = currentTime;
+        }
+        fpsFrameCount++;
+
+        if (fpsFrameCount >= 30) {
+            long elapsed = currentTime - fpsStartTime;
+            if (elapsed > 0) {
+                currentFPS = (fpsFrameCount * 1000.0) / elapsed;
+            }
             fpsFrameCount = 0;
-            fpsStartTime = 0;
-            currentFPS = 0;
-            Platform.runLater(() -> lblFPS.setText("FPS: --"));
+            fpsStartTime = currentTime;
 
-            // stop the timer
-            this.stopAcquisition();
+            final double fps = currentFPS;
+            Platform.runLater(() -> lblFPS.setText(String.format("FPS: %.1f", fps)));
+        }
+    }
+
+    /**
+     * Réinitialise les compteurs FPS
+     */
+    private void resetFPSCounters() {
+        fpsFrameCount = 0;
+        fpsStartTime = 0;
+        currentFPS = 0;
+        Platform.runLater(() -> lblFPS.setText("FPS: --"));
+    }
+
+    /**
+     * Met à jour toutes les ImageView
+     */
+    private void updateAllImageViews(Image original, Image scrambled, Image unscrambled) {
+        updateImageView(originalFrame, original);
+        updateImageView(scrambledFrame, scrambled);
+        updateImageView(unscrambledFrame, unscrambled);
+    }
+
+    /**
+     * Écrit dans le fichier vidéo si un VideoWriter est actif
+     */
+    private void writeToVideoIfNeeded(Mat scrambled) {
+        if (videoWriter != null && videoWriter.isOpened()) {
+            videoWriter.write(scrambled);
+        }
+    }
+
+    /**
+     * Libère les ressources des matrices
+     */
+    private void releaseMatrices(Mat... matrices) {
+        for (Mat mat : matrices) {
+            if (mat != null) {
+                mat.release();
+            }
         }
     }
 
@@ -465,9 +519,19 @@ public class VideoScrambleController
                                   ProgressBar progressBar, Label statusLabel,
                                   boolean isScrambling, byte keyR, byte keyS) {
 
-        Task<Void> task = new Task<Void>() {
+        Task<Void> task = createVideoProcessingTask(inputPath, outputPath, isScrambling, keyR, keyS);
+        bindTaskToUI(task, progressBar, statusLabel);
+        new Thread(task).start();
+    }
+
+    /**
+     * Crée une tâche de traitement vidéo
+     */
+    private Task<Void> createVideoProcessingTask(String inputPath, String outputPath,
+                                                 boolean isScrambling, byte keyR, byte keyS) {
+        return new Task<>() {
             @Override
-            protected Void call() throws Exception {
+            protected Void call() {
                 VideoCapture fileCapture = new VideoCapture(inputPath);
                 VideoWriter fileWriter = null;
 
@@ -477,62 +541,16 @@ public class VideoScrambleController
                 }
 
                 try {
-                    // Récupération des métadonnées
-                    double fps = fileCapture.get(Videoio.CAP_PROP_FPS);
-                    int width = (int) fileCapture.get(Videoio.CAP_PROP_FRAME_WIDTH);
-                    int height = (int) fileCapture.get(Videoio.CAP_PROP_FRAME_HEIGHT);
-                    int totalFrames = (int) fileCapture.get(Videoio.CAP_PROP_FRAME_COUNT);
-
-                    if (fps <= 0) fps = 30.0; // Fallback
-
-                    // Codec MJPG pour compatibilité maximale .avi
-                    int fourcc = VideoWriter.fourcc('M', 'J', 'P', 'G');
-                    fileWriter = new VideoWriter(outputPath, fourcc, fps, new Size(width, height), true);
+                    VideoMetadata metadata = extractVideoMetadata(fileCapture);
+                    fileWriter = createVideoWriter(outputPath, metadata);
 
                     if (!fileWriter.isOpened()) {
                         updateMessage("Erreur : Impossible de créer le fichier de sortie.");
                         return null;
                     }
 
-                    Mat frame = new Mat();
-                    int frameCounter = 0;
-                    byte finalR = keyR;
-                    byte finalS = keyS;
-
-                    updateMessage("Traitement en cours...");
-
-                    while (fileCapture.read(frame)) {
-                        if (frame.empty()) break;
-
-                        Mat processedFrame;
-
-                        if (isScrambling) {
-                            if(scrambleVideoWithRandomKey.isSelected()){
-                                final Random random = new Random();
-                                r = (byte)Math.abs(random.nextInt(4, 255) & 0xFF);
-                                s = (byte)Math.abs(random.nextInt(4, 128) & 0xFF);
-                            }
-                            processedFrame = Scrambler.scramble(frame, finalR, finalS);
-                        } else {
-                            processedFrame = Unscrambler.unscramble(frame, p);
-                        }
-
-                        // Écriture
-                        fileWriter.write(processedFrame);
-
-                        // Nettoyage
-                        // processedFrame.release(); // Attention: si scramble retourne une nouvelle Mat, release.
-                        // frame.release() est inutile ici car réutilisé par read(), mais bon de savoir.
-
-                        frameCounter++;
-                        updateProgress(frameCounter, totalFrames);
-
-                        // Mise à jour texte tous les 10% pour ne pas spammer l'UI
-                        if (frameCounter % (totalFrames / 10 + 1) == 0) {
-                            updateMessage(String.format("Traitement : %d %%", (frameCounter * 100 / totalFrames)));
-                        }
-                    }
-
+                    processAllFramesInTask(fileCapture, fileWriter, metadata.totalFrames,
+                                          isScrambling, keyR, keyS);
                     updateMessage("Terminé ! Fichier : " + new File(outputPath).getName());
                     updateProgress(1, 1);
 
@@ -540,18 +558,114 @@ public class VideoScrambleController
                     updateMessage("Erreur : " + e.getMessage());
                     e.printStackTrace();
                 } finally {
-                    fileCapture.release();
-                    if (fileWriter != null) fileWriter.release();
+                    releaseVideoResources(fileCapture, fileWriter);
                 }
                 return null;
             }
-        };
 
-        // Liaison des propriétés de la tâche à l'UI
+            /**
+             * Traite toutes les frames de la vidéo (méthode interne à Task)
+             */
+            private void processAllFramesInTask(VideoCapture capture, VideoWriter writer, int totalFrames,
+                                                boolean isScrambling, byte keyR, byte keyS) {
+                Mat frame = new Mat();
+                int frameCounter = 0;
+                updateMessage("Traitement en cours...");
+
+                while (capture.read(frame)) {
+                    if (frame.empty()) break;
+
+                    Mat processedFrame = processFrame(frame, isScrambling, keyR, keyS);
+                    writer.write(processedFrame);
+
+                    frameCounter++;
+                    updateProgress(frameCounter, totalFrames);
+
+                    if (frameCounter % (totalFrames / 10 + 1) == 0) {
+                        updateMessage(String.format("Traitement : %d %%", (frameCounter * 100 / totalFrames)));
+                    }
+                }
+            }
+        };
+    }
+
+    /**
+     * Extrait les métadonnées de la vidéo
+     */
+    private VideoMetadata extractVideoMetadata(VideoCapture capture) {
+        double fps = capture.get(Videoio.CAP_PROP_FPS);
+        int width = (int) capture.get(Videoio.CAP_PROP_FRAME_WIDTH);
+        int height = (int) capture.get(Videoio.CAP_PROP_FRAME_HEIGHT);
+        int totalFrames = (int) capture.get(Videoio.CAP_PROP_FRAME_COUNT);
+
+        if (fps <= 0) fps = 30.0; // Fallback
+
+        return new VideoMetadata(fps, width, height, totalFrames);
+    }
+
+    /**
+     * Crée un VideoWriter pour l'écriture de la vidéo de sortie
+     */
+    private VideoWriter createVideoWriter(String outputPath, VideoMetadata metadata) {
+        int fourcc = VideoWriter.fourcc('M', 'J', 'P', 'G');
+        return new VideoWriter(outputPath, fourcc, metadata.fps,
+                              new Size(metadata.width, metadata.height), true);
+    }
+
+    /**
+     * Traite une frame selon le mode (scramble ou unscramble)
+     */
+    private Mat processFrame(Mat frame, boolean isScrambling, byte keyR, byte keyS) {
+        if (isScrambling) {
+            return processScrambleFrame(frame, keyR, keyS);
+        } else {
+            return Unscrambler.unscramble(frame, p);
+        }
+    }
+
+    /**
+     * Traite une frame en mode scramble
+     */
+    private Mat processScrambleFrame(Mat frame, byte keyR, byte keyS) {
+        if (scrambleVideoWithRandomKey.isSelected()) {
+            byte randomR = (byte) Math.abs(random.nextInt(4, 255) & 0xFF);
+            byte randomS = (byte) Math.abs(random.nextInt(4, 128) & 0xFF);
+            return Scrambler.scramble(frame, randomR, randomS);
+        } else {
+            return Scrambler.scramble(frame, keyR, keyS);
+        }
+    }
+
+    /**
+     * Lie les propriétés de la tâche à l'interface utilisateur
+     */
+    private void bindTaskToUI(Task<Void> task, ProgressBar progressBar, Label statusLabel) {
         progressBar.progressProperty().bind(task.progressProperty());
         statusLabel.textProperty().bind(task.messageProperty());
+    }
 
-        // Lancer dans un thread séparé
-        new Thread(task).start();
+    /**
+     * Libère les ressources vidéo
+     */
+    private void releaseVideoResources(VideoCapture capture, VideoWriter writer) {
+        if (capture != null) capture.release();
+        if (writer != null) writer.release();
+    }
+
+    /**
+     * Classe interne pour stocker les métadonnées vidéo
+     */
+    private static class VideoMetadata {
+        final double fps;
+        final int width;
+        final int height;
+        final int totalFrames;
+
+        VideoMetadata(double fps, int width, int height, int totalFrames) {
+            this.fps = fps;
+            this.width = width;
+            this.height = height;
+            this.totalFrames = totalFrames;
+        }
     }
 }
