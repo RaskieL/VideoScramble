@@ -49,10 +49,10 @@ public class VideoScrambleController
 
     @FXML private Slider sliderR;
     @FXML private Slider sliderS;
-    @FXML
-    private byte r;
-    @FXML
-    private byte s;
+    @FXML private Slider sliderP;
+    private byte r = (byte)177;
+    private byte s = 67;
+    private int p = 1;
 
     @FXML private Text rValue;
     @FXML private Text sValue;
@@ -90,7 +90,7 @@ public class VideoScrambleController
         sliderS.setValue(s);
 
         randomKey.setSelected(false);
-        scrambleVideoWithRandomKey.setSelected(false);
+        //scrambleVideoWithRandomKey.setSelected(false);
 
         sliderR.disableProperty().bind(randomKey.selectedProperty());
         sliderS.disableProperty().bind(randomKey.selectedProperty());
@@ -101,6 +101,9 @@ public class VideoScrambleController
         });
         sliderS.valueProperty().addListener((observable, oldValue, newValue) -> {
             s = (byte) newValue.intValue();
+        });
+        sliderP.valueProperty().addListener((observable, oldValue, newValue) -> {
+            p = newValue.intValue();
         });
     }
 
@@ -152,7 +155,7 @@ public class VideoScrambleController
                             Mat scrambled = Scrambler.scramble(frame, r, s);
                             Image scrambledImageToShow = mat2Image(scrambled);
 
-                            Mat unscrambled = Unscrambler.unscramble(scrambled);
+                            Mat unscrambled = Unscrambler.unscramble(scrambled, p);
                             Image unscrambledImageToShow = mat2Image(unscrambled);
 
                             updateImageView(originalFrame, imageToShow);
@@ -476,7 +479,7 @@ public class VideoScrambleController
                             }
                             processedFrame = Scrambler.scramble(frame, finalR, finalS);
                         } else {
-                            processedFrame = Unscrambler.unscramble(frame);
+                            processedFrame = Unscrambler.unscramble(frame, p);
                         }
 
                         // Écriture

@@ -43,6 +43,11 @@
                                             <Label text="Clé S (Step): " />
                                             <Slider fx:id="sliderS" showTickLabels="true" showTickMarks="true" max="127" min="0" value="67" HBox.hgrow="ALWAYS" />
                                         </HBox>
+
+                                        <HBox alignment="CENTER" spacing="10">
+                                            <Label text="Précision: " />
+                                            <Slider fx:id="sliderP" showTickLabels="true" showTickMarks="true" max="10" min="0" value="1" HBox.hgrow="ALWAYS" />
+                                        </HBox>
                                     </VBox>
                                 </VBox>
                             </bottom>
