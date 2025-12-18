@@ -105,15 +105,9 @@ public class VideoScrambleController
         sliderS.disableProperty().bind(randomKey.selectedProperty());
 
 
-        sliderR.valueProperty().addListener((observable, oldValue, newValue) -> {
-            r = (byte) newValue.intValue();
-        });
-        sliderS.valueProperty().addListener((observable, oldValue, newValue) -> {
-            s = (byte) newValue.intValue();
-        });
-        sliderP.valueProperty().addListener((observable, oldValue, newValue) -> {
-            p = newValue.intValue();
-        });
+        sliderR.valueProperty().addListener((observable, oldValue, newValue) -> r = (byte) newValue.intValue());
+        sliderS.valueProperty().addListener((observable, oldValue, newValue) -> s = (byte) newValue.intValue());
+        sliderP.valueProperty().addListener((observable, oldValue, newValue) -> p = newValue.intValue());
 
     }
 
@@ -444,9 +438,7 @@ public class VideoScrambleController
      */
     public static <T> void onFXThread(final ObjectProperty<T> property, final T value)
     {
-        Platform.runLater(() -> {
-            property.set(value);
-        });
+        Platform.runLater(() -> property.set(value));
     }
 
     @FXML
@@ -463,7 +455,7 @@ public class VideoScrambleController
             btnStartScramble.setDisable(false);
 
             // Mise à jour visuelle des clés qui seront utilisées
-            lblCurrentR.setText("R: " + (int)(r & 0xFF));
+            lblCurrentR.setText("R: " + (r & 0xFF));
             lblCurrentS.setText("S: " + (int)s);
         }
     }
